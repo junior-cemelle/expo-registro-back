@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum rol_tipo {
+  admin
+  docente
+  alumno
+}
+
+model materia {
+  id_materia     Int      @id @default(autoincrement())
+  clave_materia  String   @unique @db.VarChar(20)
+  nombre_materia String   @db.VarChar(100)
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en DateTime @default(now()) @db.Timestamp(6)
+
+  grupos grupo[]
+}
+
+model alumno {
+  id_alumno      Int      @id @default(autoincrement())
+  numero_control String   @unique @db.VarChar(20)
+  nombre         String   @db.VarChar(80)
+  apellido       String   @db.VarChar(80)
+  email          String   @unique @db.VarChar(120)
+  password       String   @db.VarChar(255)
+  rol            rol_tipo @default(alumno)
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en DateTime @default(now()) @db.Timestamp(6)
+
+  grupos       grupo_alumno[]
+  equipos      equipo_alumno[]
+  evaluaciones evaluacion[]
+}
+
+model grupo {
+  id_grupo       Int      @id @default(autoincrement())
+  nombre_grupo   String   @db.VarChar(60)
+  ciclo_escolar  String   @db.VarChar(20)
+  id_materia     Int
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en DateTime @default(now()) @db.Timestamp(6)
+
+  materia materia        @relation(fields: [id_materia], references: [id_materia])
+  alumnos grupo_alumno[]
+  equipos equipo[]
+}
+
+model grupo_alumno {
+  id_grupo  Int
+  id_alumno Int
+
+  grupo  grupo  @relation(fields: [id_grupo], references: [id_grupo], onDelete: Cascade)
+  alumno alumno @relation(fields: [id_alumno], references: [id_alumno], onDelete: Cascade)
+
+  @@id([id_grupo, id_alumno])
+}
+
+model equipo {
+  id_equipo      Int      @id @default(autoincrement())
+  nombre_equipo  String   @db.VarChar(80)
+  id_grupo       Int
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en DateTime @default(now()) @db.Timestamp(6)
+
+  grupo        grupo           @relation(fields: [id_grupo], references: [id_grupo])
+  alumnos      equipo_alumno[]
+  exposiciones exposicion[]
+}
+
+model equipo_alumno {
+  id_equipo Int
+  id_alumno Int
+
+  equipo equipo @relation(fields: [id_equipo], references: [id_equipo], onDelete: Cascade)
+  alumno alumno @relation(fields: [id_alumno], references: [id_alumno], onDelete: Cascade)
+
+  @@id([id_equipo, id_alumno])
+}
+
+model criterio {
+  id_criterio     Int      @id @default(autoincrement())
+  nombre_criterio String   @db.VarChar(100)
+  descripcion     String?
+  puntaje_maximo  Decimal  @default(10.00) @db.Decimal(5, 2)
+  creado_en       DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en  DateTime @default(now()) @db.Timestamp(6)
+
+  detalles detalle_evaluacion[]
+}
+
+model exposicion {
+  id_exposicion  Int      @id @default(autoincrement())
+  tema           String   @db.VarChar(200)
+  fecha          DateTime @db.Date
+  id_equipo      Int
+  creado_en      DateTime @default(now()) @db.Timestamp(6)
+  actualizado_en DateTime @default(now()) @db.Timestamp(6)
+
+  equipo       equipo       @relation(fields: [id_equipo], references: [id_equipo])
+  evaluaciones evaluacion[]
+}
+
+model evaluacion {
+  id_evaluacion       Int      @id @default(autoincrement())
+  id_exposicion       Int
+  id_alumno_evaluador Int
+  fecha_evaluacion    DateTime @default(now()) @db.Timestamp(6)
+
+  exposicion exposicion          @relation(fields: [id_exposicion], references: [id_exposicion])
+  alumno     alumno              @relation(fields: [id_alumno_evaluador], references: [id_alumno], onDelete: Cascade)
+  detalles   detalle_evaluacion[]
+
+  @@unique([id_exposicion, id_alumno_evaluador])
+}
+
+model detalle_evaluacion {
+  id_detalle    Int     @id @default(autoincrement())
+  id_evaluacion Int
+  id_criterio   Int
+  calificacion  Decimal @db.Decimal(4, 2)
+
+  evaluacion evaluacion @relation(fields: [id_evaluacion], references: [id_evaluacion], onDelete: Cascade)
+  criterio   criterio   @relation(fields: [id_criterio], references: [id_criterio])
+
+  @@unique([id_evaluacion, id_criterio])
+}
