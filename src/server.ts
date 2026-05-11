@@ -2,6 +2,7 @@ import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import authPlugin from './plugins/auth.js'
+import healthRoutes from './routes/health.js'
 import authRoutes from './routes/auth.js'
 import materiasRoutes from './routes/materias.js'
 import gruposRoutes from './routes/grupos.js'
@@ -22,6 +23,7 @@ const start = async () => {
   await fastify.register(authPlugin)
 
   const PREFIX = '/api/v1'
+  fastify.register(healthRoutes,      { prefix: '/' })
   fastify.register(authRoutes,        { prefix: `${PREFIX}/auth` })
   fastify.register(materiasRoutes,    { prefix: `${PREFIX}/materias` })
   fastify.register(gruposRoutes,      { prefix: `${PREFIX}/grupos` })
