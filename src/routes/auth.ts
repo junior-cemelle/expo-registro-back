@@ -35,6 +35,34 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send({ token, expiresIn, tipo: 'Bearer', id_alumno: alumno.id_alumno, rol: alumno.rol })
   })
 
+  // Registro público — no requiere JWT, siempre crea con rol 'alumno'
+  fastify.post('/register', async (request, reply) => {
+    const body = request.body as {
+      numero_control: string; nombre: string; apellido: string
+      email: string; password: string
+    }
+    if (!body.numero_control || !body.nombre || !body.apellido || !body.email || !body.password) {
+      return sendError(reply, 400, 'Bad Request', 'Todos los campos son obligatorios', request.url)
+    }
+    if (body.password.length < 8) {
+      return sendError(reply, 400, 'Bad Request', 'La contraseña debe tener al menos 8 caracteres', request.url)
+    }
+    const hashed = await bcrypt.hash(body.password, 10)
+    const { data, error } = await supabase
+      .from('alumno')
+      .insert({ ...body, password: hashed, rol: 'alumno' })
+      .select('id_alumno, numero_control, nombre, apellido, email, rol')
+      .single()
+
+    if (error) {
+      if (error.code === '23505') {
+        return sendError(reply, 409, 'Conflict', 'El número de control o correo ya están registrados', request.url)
+      }
+      return sendError(reply, 500, 'Internal Server Error', error.message, request.url)
+    }
+    return reply.status(201).send(data)
+  })
+
   fastify.get('/me', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { data: alumno } = await supabase
       .from('alumno')
