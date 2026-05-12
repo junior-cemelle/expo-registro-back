@@ -76,6 +76,54 @@ const alumnosRoutes: FastifyPluginAsync = async (fastify) => {
     if (error) return handleSupabaseError(error, reply, request.url)
     return reply.status(204).send()
   })
+
+  // Grupos a los que pertenece un alumno (incluye materia)
+  fastify.get('/:id/grupos', auth, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { data, error } = await supabase
+      .from('grupo_alumno')
+      .select('grupo(id_grupo, nombre_grupo, ciclo_escolar, id_materia, materia(nombre_materia, clave_materia))')
+      .eq('id_alumno', id)
+    if (error) return handleSupabaseError(error, reply, request.url)
+    const grupos = (data ?? []).map((r: Record<string, unknown>) => {
+      const g = r.grupo as Record<string, unknown>
+      const m = g.materia as Record<string, unknown>
+      return { ...g, nombre_materia: m?.nombre_materia, clave_materia: m?.clave_materia, materia: undefined }
+    })
+    return reply.send(grupos)
+  })
+
+  // Equipos a los que pertenece un alumno (incluye grupo, materia y miembros)
+  fastify.get('/:id/equipos', auth, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { data, error } = await supabase
+      .from('equipo_alumno')
+      .select(`equipo(
+        id_equipo, nombre_equipo, id_grupo,
+        grupo(nombre_grupo, ciclo_escolar, id_materia, materia(nombre_materia, clave_materia)),
+        equipo_alumno(alumno(id_alumno, nombre, apellido, numero_control, email))
+      )`)
+      .eq('id_alumno', id)
+    if (error) return handleSupabaseError(error, reply, request.url)
+    const equipos = (data ?? []).map((r: Record<string, unknown>) => {
+      const e = r.equipo as Record<string, unknown>
+      const g = e.grupo as Record<string, unknown>
+      const m = g?.materia as Record<string, unknown>
+      const miembros = (e.equipo_alumno as Record<string, unknown>[])?.map(ea => ea.alumno) ?? []
+      return {
+        id_equipo:      e.id_equipo,
+        nombre_equipo:  e.nombre_equipo,
+        id_grupo:       e.id_grupo,
+        nombre_grupo:   g?.nombre_grupo,
+        ciclo_escolar:  g?.ciclo_escolar,
+        id_materia:     g?.id_materia,
+        nombre_materia: m?.nombre_materia,
+        clave_materia:  m?.clave_materia,
+        alumnos:        miembros,
+      }
+    })
+    return reply.send(equipos)
+  })
 }
 
 export default alumnosRoutes
