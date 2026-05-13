@@ -10,12 +10,17 @@ const criteriosRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/', auth, async (request, reply) => {
     const { page, size } = parsePagination(request)
-    const { data, count, error } = await supabase
+    const { nombre_criterio } = request.query as { nombre_criterio?: string }
+
+    let query = supabase
       .from('criterio')
       .select(CRITERIO_SELECT, { count: 'exact' })
       .order('id_criterio')
       .range(page * size, (page + 1) * size - 1)
 
+    if (nombre_criterio) query = query.ilike('nombre_criterio', `%${nombre_criterio}%`)
+
+    const { data, count, error } = await query
     if (error) return handleSupabaseError(error, reply, request.url)
     return reply.send(paginateResponse(data ?? [], count ?? 0, page, size))
   })
