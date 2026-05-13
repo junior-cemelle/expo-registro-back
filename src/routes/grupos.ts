@@ -15,7 +15,7 @@ const gruposRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/', auth, async (request, reply) => {
     const { page, size } = parsePagination(request)
-    const { id_materia, ciclo_escolar } = request.query as { id_materia?: string; ciclo_escolar?: string }
+    const { id_materia, ciclo_escolar, nombre_grupo } = request.query as { id_materia?: string; ciclo_escolar?: string; nombre_grupo?: string }
 
     let query = supabase
       .from('grupo')
@@ -25,6 +25,7 @@ const gruposRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (id_materia) query = query.eq('id_materia', id_materia)
     if (ciclo_escolar) query = query.eq('ciclo_escolar', ciclo_escolar)
+    if (nombre_grupo) query = query.ilike('nombre_grupo', `%${nombre_grupo}%`)
 
     const { data, count, error } = await query
     if (error) return handleSupabaseError(error, reply, request.url)

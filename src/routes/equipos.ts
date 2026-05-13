@@ -26,7 +26,7 @@ const equiposRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/', auth, async (request, reply) => {
     const { page, size } = parsePagination(request)
-    const { id_grupo } = request.query as { id_grupo?: string }
+    const { id_grupo, nombre_equipo } = request.query as { id_grupo?: string; nombre_equipo?: string }
 
     let query = supabase
       .from('equipo')
@@ -35,6 +35,7 @@ const equiposRoutes: FastifyPluginAsync = async (fastify) => {
       .range(page * size, (page + 1) * size - 1)
 
     if (id_grupo) query = query.eq('id_grupo', id_grupo)
+    if (nombre_equipo) query = query.ilike('nombre_equipo', `%${nombre_equipo}%`)
 
     const { data, count, error } = await query
     if (error) return handleSupabaseError(error, reply, request.url)
